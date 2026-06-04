@@ -1,0 +1,226 @@
+/* ============================================================================
+   MODRIFT — Colors & Type Foundation
+   Dark, cinematic, developer-forward. Purple accent on near-black.
+   ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root {
+  /* ---------------------------------------------------------------- *
+   * SURFACES                                                          *
+   * ---------------------------------------------------------------- */
+  --bg:          #070d17;
+  --surface:     #0c1220;
+  --surface-2:   #111827;
+
+  /* ---------------------------------------------------------------- *
+   * BORDERS                                                           *
+   * ---------------------------------------------------------------- */
+  --border:        rgba(73, 80, 87, 0.6);
+  --border-solid:  #495057;
+  --border-hover:  rgba(73, 80, 87, 0.9);
+
+  /* ---------------------------------------------------------------- *
+   * ACCENT                                                            *
+   * ---------------------------------------------------------------- */
+  --accent:        #7C3AED;
+  --accent-light:  #A78BFA;
+  --accent-glow:   #9F5BEF;
+  --accent-dim:    rgba(106, 53, 238, 0.15);
+
+  --accent-2:        #22D3EE;
+  --accent-2-light:  #67E8F9;
+  --accent-2-dim:    rgba(34, 211, 238, 0.12);
+
+  --gradient-duo: linear-gradient(120deg, #7C3AED 0%, #6D5BF0 45%, #22D3EE 100%);
+
+  --gradient-primary: linear-gradient(164.72deg,
+      rgb(106, 53, 238) 0%,
+      rgb(153, 48, 239) 14.24%,
+      rgb(87, 55, 238)  49.564%,
+      rgb(121, 92, 235) 93.198%);
+
+  --gradient-text: linear-gradient(135deg, #ffffff 0%, #A78BFA 100%);
+
+  /* ---------------------------------------------------------------- *
+   * TEXT                                                              *
+   * ---------------------------------------------------------------- */
+  --text-primary:    #ECEDF0;
+  --text-secondary:  #868e96;
+  --text-muted:      #495057;
+
+  /* ---------------------------------------------------------------- *
+   * SEMANTIC                                                          *
+   * ---------------------------------------------------------------- */
+  --ok:       #22C55E;
+  --ok-soft:  #4ade80;
+  --danger:   #F87171;
+  --danger-2: #F43F5E;
+  --warn:     #FEBC2E;
+
+  /* ---------------------------------------------------------------- *
+   * RADII                                                             *
+   * ---------------------------------------------------------------- */
+  --radius-card:  20px;
+  --radius-md:    14px;
+  --radius-sm:    8px;
+  --radius-btn:   14px;
+  --radius-input: 14px;
+
+  /* ---------------------------------------------------------------- *
+   * SPACING                                                           *
+   * ---------------------------------------------------------------- */
+  --space-xs:  4px;
+  --space-sm:  8px;
+  --space-md:  16px;
+  --space-lg:  24px;
+  --space-xl:  32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+  --section-y: 120px;
+
+  /* ---------------------------------------------------------------- *
+   * ELEVATION & GLOW                                                  *
+   * ---------------------------------------------------------------- */
+  --shadow-card:  0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-float: 0 8px 32px rgba(0, 0, 0, 0.5),
+                  0 32px 80px rgba(0, 0, 0, 0.4);
+  --glow-accent:  0 0 24px rgba(124, 58, 237, 0.4);
+  --glow-accent-strong: 0 0 36px rgba(106, 53, 238, 0.55),
+                        0 8px 24px rgba(0, 0, 0, 0.3);
+
+  /* ---------------------------------------------------------------- *
+   * MOTION                                                            *
+   * ---------------------------------------------------------------- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 0.15s;
+  --dur-med:  0.2s;
+  --dur-slow: 0.85s;
+
+  /* ---------------------------------------------------------------- *
+   * TYPE                                                              *
+   * ---------------------------------------------------------------- */
+  --font:      'Lato', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+}
+
+/* ── Reset ──────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { height: 100%; overflow: hidden; }
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ── Film grain ─────────────────────────────────────────────────── */
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+  opacity: 0.022;
+  background-image: url("data:image/svg+xml,<svg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/></filter><rect width='256' height='256' filter='url(%23n)'/></svg>");
+}
+
+button { font-family: var(--font); }
+a { color: inherit; text-decoration: none; }
+input, select { font-family: var(--font); color: var(--text-primary); background: var(--surface-2); }
+select option { background: var(--surface-2); }
+::selection { background: rgba(106,53,238,0.35); color: #fff; }
+
+/* ── Keyframes ──────────────────────────────────────────────────── */
+@keyframes lcSpin  { to { transform: rotate(360deg); } }
+@keyframes lcPulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.3; transform:scale(0.7); } }
+@keyframes lcGlow  { 0%,100% { opacity:1; transform:translate(-50%,-50%) scale(1); } 50% { opacity:0.65; transform:translate(-50%,-50%) scale(1.06); } }
+@keyframes lcFloat { 0%,100% { transform:perspective(900px) rotateY(-7deg) rotateX(4deg) translateY(0); } 50% { transform:perspective(900px) rotateY(-7deg) rotateX(4deg) translateY(-8px); } }
+@keyframes lcReveal { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+/* ── Scrollbars ─────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 100px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+
+/* ── Type classes ───────────────────────────────────────────────── */
+.display {
+  font-family: var(--font);
+  font-size: clamp(52px, 8.5vw, 92px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.0;
+  color: var(--text-primary);
+}
+
+.h1 {
+  font-family: var(--font);
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+
+.h2 {
+  font-family: var(--font);
+  font-size: clamp(32px, 4vw, 48px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+
+.h3 {
+  font-family: var(--font);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+.eyebrow {
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-light);
+}
+
+.body {
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.body-lg {
+  font-family: var(--font);
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.small {
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.text-gradient {
+  background: var(--gradient-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
