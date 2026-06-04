@@ -444,11 +444,17 @@ function AnimatedShowcase() {
   );
 }
 
+const OAUTH_URL = 'https://modrift.dev/auth/launcher';
+
 export function LoginScreen({ onLogin, onGuest }: LoginScreenProps) {
   const [vis, setVis] = useState(false);
   useEffect(() => {
     setTimeout(() => setVis(true), 60);
   }, []);
+
+  function openOAuth() {
+    window.open(OAUTH_URL, '_blank');
+  }
 
   return (
     <div
@@ -526,7 +532,7 @@ export function LoginScreen({ onLogin, onGuest }: LoginScreenProps) {
             Install, manage and launch Rift mods — all from one place.
           </p>
 
-          <AuthBtn icon={<LIcon.ms />} label="Continue with Microsoft" primary onClick={onLogin} />
+          <AuthBtn icon={<LIcon.ms />} label="Continue with Microsoft" primary onClick={openOAuth} />
           <div style={{ height: 8 }} />
           <AuthBtn
             label={
@@ -546,7 +552,7 @@ export function LoginScreen({ onLogin, onGuest }: LoginScreenProps) {
               href="#"
               onClick={(e) => {
                 e.preventDefault();
-                onLogin();
+                openOAuth();
               }}
               style={{ color: 'var(--accent-light)', textDecoration: 'none' }}
             >
