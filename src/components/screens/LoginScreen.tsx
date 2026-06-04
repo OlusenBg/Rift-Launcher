@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Logo } from '../shared/Logo';
-import { Icon, LIcon } from '../shared/Icons';
+import { Icon } from '../shared/Icons';
 import { startAuth, type MinecraftProfile } from '../../hooks/useAuth';
 
 interface LoginScreenProps {
