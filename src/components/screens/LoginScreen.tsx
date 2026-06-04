@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Logo } from '../shared/Logo';
-import { Icon } from '../shared/Icons';
-import { open } from '@tauri-apps/plugin-shell';
+import { Icon, LIcon } from '../shared/Icons';
+import { startAuth, type MinecraftProfile } from '../../hooks/useAuth';
 
 interface LoginScreenProps {
-  onLogin: () => void;
+  onLogin: (profile: MinecraftProfile) => void;
   onGuest: () => void;
 }
 
@@ -445,17 +445,26 @@ function AnimatedShowcase() {
   );
 }
 
-export function LoginScreen({ onLogin: _onLogin, onGuest }: LoginScreenProps) {
+export function LoginScreen({ onLogin, onGuest }: LoginScreenProps) {
   const [vis, setVis] = useState(false);
-  const [waiting, setWaiting] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     setTimeout(() => setVis(true), 60);
   }, []);
 
   async function handleModriftLogin() {
-    setWaiting(true);
-    await open('https://modrift.dev');
+    setLoading(true);
+    setAuthError(null);
+    try {
+      const profile = await startAuth();
+      onLogin(profile);
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -534,7 +543,7 @@ export function LoginScreen({ onLogin: _onLogin, onGuest }: LoginScreenProps) {
             Install, manage and launch Rift mods — all from one place.
           </p>
 
-          {waiting ? (
+          {loading ? (
             <div
               style={{
                 width: '100%',
@@ -554,7 +563,7 @@ export function LoginScreen({ onLogin: _onLogin, onGuest }: LoginScreenProps) {
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ animation: 'spin 1s linear infinite' }}>
                 <circle cx="8" cy="8" r="6" stroke="var(--accent-light)" strokeWidth="2" strokeDasharray="25 13" />
               </svg>
-              Waiting for login…
+              Waiting for Modrift login…
             </div>
           ) : (
             <AuthBtn
@@ -563,6 +572,11 @@ export function LoginScreen({ onLogin: _onLogin, onGuest }: LoginScreenProps) {
               primary
               onClick={handleModriftLogin}
             />
+          )}
+          {authError && (
+            <p style={{ fontSize: 12, color: 'var(--err, #ef4444)', marginTop: 8, lineHeight: 1.5 }}>
+              {authError}
+            </p>
           )}
           <div style={{ height: 8 }} />
           <AuthBtn
@@ -580,11 +594,9 @@ export function LoginScreen({ onLogin: _onLogin, onGuest }: LoginScreenProps) {
           <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 26, lineHeight: 1.6 }}>
             No account yet?{' '}
             <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                handleModriftLogin();
-              }}
+              href="https://modrift.dev"
+              target="_blank"
+              rel="noreferrer"
               style={{ color: 'var(--accent-light)', textDecoration: 'none' }}
             >
               Sign up at modrift.dev →
