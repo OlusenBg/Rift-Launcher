@@ -11,6 +11,7 @@ import { DiscoverView } from './components/views/DiscoverView';
 import { SettingsView } from './components/views/SettingsView';
 import { TweaksPanel, TweakSection, TweakToggle, TweakColor, useTweaks } from './tweaks/TweaksPanel';
 import type { User, Instance, ToastState } from './types';
+import { getSession, logout as tauriLogout, type MinecraftProfile } from './hooks/useAuth';
 
 // ── Color helpers ─────────────────────────────────────────────────────────────
 function dimify(hex: string): string {
@@ -129,19 +130,32 @@ export default function App() {
   const [screen, setScreen] = useState<'splash' | 'login' | 'app'>('splash');
   const [user, setUser] = useState<User | null>(null);
 
-  // Persist session
+  // Persist session — check Tauri session first, fall back to localStorage
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('lc_user');
-      if (saved) {
-        setUser(JSON.parse(saved));
-        setScreen('app');
+    (async () => {
+      try {
+        const session = await getSession();
+        if (session) {
+          const u: User = { name: session.minecraft_username, type: 'microsoft' };
+          setUser(u);
+          setScreen('app');
+          return;
+        }
+      } catch {
+        // Tauri not available (e.g. browser dev) — fall through to localStorage
       }
-    } catch {}
+      try {
+        const saved = localStorage.getItem('lc_user');
+        if (saved) {
+          setUser(JSON.parse(saved));
+          setScreen('app');
+        }
+      } catch {}
+    })();
   }, []);
 
-  function handleLogin() {
-    const u: User = { name: 'Player', type: 'microsoft' };
+  function handleLogin(profile: MinecraftProfile) {
+    const u: User = { name: profile.username, type: 'microsoft' };
     setUser(u);
     try {
       localStorage.setItem('lc_user', JSON.stringify(u));
@@ -158,8 +172,13 @@ export default function App() {
     setScreen('app');
   }
 
-  function handleLogout() {
+  async function handleLogout() {
     setUser(null);
+    try {
+      await tauriLogout();
+    } catch {
+      // Tauri not available
+    }
     try {
       localStorage.removeItem('lc_user');
     } catch {}

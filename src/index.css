@@ -131,6 +131,7 @@ select option { background: var(--surface-2); }
 
 /* ── Keyframes ──────────────────────────────────────────────────── */
 @keyframes lcSpin  { to { transform: rotate(360deg); } }
+@keyframes spin     { to { transform: rotate(360deg); } }
 @keyframes lcPulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.3; transform:scale(0.7); } }
 @keyframes lcGlow  { 0%,100% { opacity:1; transform:translate(-50%,-50%) scale(1); } 50% { opacity:0.65; transform:translate(-50%,-50%) scale(1.06); } }
 @keyframes lcFloat { 0%,100% { transform:perspective(900px) rotateY(-7deg) rotateX(4deg) translateY(0); } 50% { transform:perspective(900px) rotateY(-7deg) rotateX(4deg) translateY(-8px); } }
