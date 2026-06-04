@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+src-tauri/target/
+
+# Tauri
+src-tauri/gen/
+
+# Env
+.env
+.env.local
+
+# Editor
+.vscode/
+.idea/
+
+# Claude Code internals
+.claude/worktrees/
