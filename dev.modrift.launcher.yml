@@ -1,0 +1,23 @@
+# Flatpak manifest stub for Rift Launcher
+# TODO: Complete this manifest with proper Rust/Node build modules and sources.
+app-id: dev.modrift.launcher
+runtime: org.gnome.Platform
+runtime-version: '47'
+sdk: org.gnome.Sdk
+command: rift-launcher
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  - --filesystem=home
+modules:
+  - name: rift-launcher
+    buildsystem: simple
+    build-commands:
+      - echo "TODO: add build commands"
+    sources:
+      - type: git
+        url: https://github.com/modrift/rift-launcher
+        branch: main

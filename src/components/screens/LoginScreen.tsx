@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Logo } from '../shared/Logo';
-import { Icon, LIcon } from '../shared/Icons';
+import { Icon } from '../shared/Icons';
+import { open } from '@tauri-apps/plugin-shell';
 
 interface LoginScreenProps {
   onLogin: () => void;
@@ -444,16 +445,17 @@ function AnimatedShowcase() {
   );
 }
 
-const OAUTH_URL = 'https://modrift.dev/auth/launcher';
-
-export function LoginScreen({ onLogin, onGuest }: LoginScreenProps) {
+export function LoginScreen({ onLogin: _onLogin, onGuest }: LoginScreenProps) {
   const [vis, setVis] = useState(false);
+  const [waiting, setWaiting] = useState(false);
+
   useEffect(() => {
     setTimeout(() => setVis(true), 60);
   }, []);
 
-  function openOAuth() {
-    window.open(OAUTH_URL, '_blank');
+  async function handleModriftLogin() {
+    setWaiting(true);
+    await open('https://modrift.dev');
   }
 
   return (
@@ -532,7 +534,36 @@ export function LoginScreen({ onLogin, onGuest }: LoginScreenProps) {
             Install, manage and launch Rift mods — all from one place.
           </p>
 
-          <AuthBtn icon={<LIcon.ms />} label="Continue with Microsoft" primary onClick={openOAuth} />
+          {waiting ? (
+            <div
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 11,
+                padding: '14px 22px',
+                background: 'var(--surface)',
+                border: '1px solid var(--border-solid)',
+                borderRadius: 'var(--radius-btn)',
+                color: 'var(--text-secondary)',
+                fontSize: 14.5,
+                fontWeight: 700,
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ animation: 'spin 1s linear infinite' }}>
+                <circle cx="8" cy="8" r="6" stroke="var(--accent-light)" strokeWidth="2" strokeDasharray="25 13" />
+              </svg>
+              Waiting for login…
+            </div>
+          ) : (
+            <AuthBtn
+              icon={<Logo size={18} showWord={false} />}
+              label="Continue with Modrift"
+              primary
+              onClick={handleModriftLogin}
+            />
+          )}
           <div style={{ height: 8 }} />
           <AuthBtn
             label={
@@ -552,7 +583,7 @@ export function LoginScreen({ onLogin, onGuest }: LoginScreenProps) {
               href="#"
               onClick={(e) => {
                 e.preventDefault();
-                openOAuth();
+                handleModriftLogin();
               }}
               style={{ color: 'var(--accent-light)', textDecoration: 'none' }}
             >
