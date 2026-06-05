@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Instance, User } from '../../types';
 
 const viewLabelStyle: React.CSSProperties = {
@@ -18,8 +18,15 @@ interface ModsViewProps {
 }
 
 export function ModsView({ instances }: ModsViewProps) {
-  const [selId, setSelId] = useState<number | null>(instances[0]?.id ?? null);
+  const [selId, setSelId] = useState<string | null>(instances[0]?.id ?? null);
   const sel = instances.find((i) => i.id === selId);
+
+  // Auto-select first instance when the list changes from empty to non-empty
+  useEffect(() => {
+    if (!selId && instances.length > 0) {
+      setSelId(instances[0].id);
+    }
+  }, [instances, selId]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>

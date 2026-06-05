@@ -4,7 +4,7 @@ export interface User {
 }
 
 export interface Instance {
-  id: number;
+  id: string;
   name: string;
   version: string;
   mods: number;

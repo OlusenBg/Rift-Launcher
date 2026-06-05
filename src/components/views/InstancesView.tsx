@@ -29,7 +29,8 @@ export function InstancesView({ instances, onSetInstances, showToast }: Instance
 
   function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!newName.trim()) return;
+    const trimmed = newName.trim();
+    if (!trimmed || trimmed.length > 64 || /[<>"{}|\\^`]/.test(trimmed)) return;
     setCreating(true);
     setTimeout(() => {
       const grads = [
@@ -41,8 +42,8 @@ export function InstancesView({ instances, onSetInstances, showToast }: Instance
       onSetInstances((prev) => [
         ...prev,
         {
-          id: Date.now(),
-          name: newName.trim(),
+          id: crypto.randomUUID(),
+          name: trimmed,
           version: newVer,
           mods: 0,
           lastPlayed: 'Never',
@@ -57,7 +58,7 @@ export function InstancesView({ instances, onSetInstances, showToast }: Instance
     }, 600);
   }
 
-  function handleDelete(id: number) {
+  function handleDelete(id: string) {
     onSetInstances((prev) => prev.filter((i) => i.id !== id));
     showToast('Instance deleted', 'accent');
   }
@@ -172,6 +173,7 @@ export function InstancesView({ instances, onSetInstances, showToast }: Instance
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="My Modpack"
+              maxLength={64}
               autoFocus
               style={inputStyle}
             />
@@ -224,7 +226,7 @@ export function InstancesView({ instances, onSetInstances, showToast }: Instance
           </LabeledField>
           <button
             type="submit"
-            disabled={!newName.trim() || creating}
+            disabled={!newName.trim() || newName.trim().length > 64 || creating}
             style={{
               marginTop: 6,
               padding: '12px',
@@ -236,7 +238,7 @@ export function InstancesView({ instances, onSetInstances, showToast }: Instance
               fontWeight: 700,
               cursor: 'pointer',
               boxShadow: 'var(--glow-accent)',
-              opacity: !newName.trim() ? 0.5 : 1,
+              opacity: !newName.trim() || newName.trim().length > 64 ? 0.5 : 1,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

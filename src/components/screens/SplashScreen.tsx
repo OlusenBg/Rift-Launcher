@@ -110,7 +110,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
           transition: 'opacity 0.6s 1s',
         }}
       >
-        v0.1.0 — Rift Launcher
+        {__APP_VERSION__} — Rift Launcher
       </div>
     </div>
   );

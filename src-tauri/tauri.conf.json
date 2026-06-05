@@ -22,7 +22,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; connect-src 'self' https://modrift.dev https://user.auth.xboxlive.com https://xsts.auth.xboxlive.com https://api.minecraftservices.com; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'"
     }
   },
   "plugins": {

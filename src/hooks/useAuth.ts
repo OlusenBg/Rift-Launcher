@@ -9,8 +9,7 @@ export interface SessionInfo {
 export interface MinecraftProfile {
   uuid: string;
   username: string;
-  minecraft_token: string;
-  launcher_api_key?: string;
+  launcher_api_key: string;
 }
 
 export async function startAuth(): Promise<MinecraftProfile> {

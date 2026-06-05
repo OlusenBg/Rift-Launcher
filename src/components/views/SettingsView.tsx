@@ -78,7 +78,12 @@ function SettingsRow({
 
 export function SettingsView({ user, onLogout }: SettingsViewProps) {
   const [memory, setMemory] = useState(4);
-  const [autoUpdate, _setAutoUpdate] = useState(true);
+  const [autoUpdate, setAutoUpdate] = useState(() => {
+    try { return localStorage.getItem('lc_autoUpdate') !== 'false'; } catch { return true; }
+  });
+  const [closeToTray, setCloseToTray] = useState(() => {
+    try { return localStorage.getItem('lc_closeToTray') === 'true'; } catch { return false; }
+  });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -264,11 +269,11 @@ export function SettingsView({ user, onLogout }: SettingsViewProps) {
 
         <SettingsSection title="Launcher">
           <SettingsRow label="Auto-update mods" sub="Keep all mods updated automatically">
-            <Toggle enabled={autoUpdate} />
+            <Toggle enabled={autoUpdate} onChange={(v) => { setAutoUpdate(v); try { localStorage.setItem('lc_autoUpdate', String(v)); } catch {} }} />
           </SettingsRow>
           <div style={{ height: 8 }} />
           <SettingsRow label="Close to tray" sub="Keep the launcher running in background">
-            <Toggle enabled={false} />
+            <Toggle enabled={closeToTray} onChange={(v) => { setCloseToTray(v); try { localStorage.setItem('lc_closeToTray', String(v)); } catch {} }} />
           </SettingsRow>
         </SettingsSection>
 

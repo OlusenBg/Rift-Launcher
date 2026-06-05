@@ -7,7 +7,7 @@ interface InstanceCardProps {
   instance: Instance;
   onPlay: (instance: Instance) => void;
   onEdit?: (instance: Instance) => void;
-  onDelete?: (id: number) => void;
+  onDelete?: (id: string) => void;
 }
 
 export function InstanceCard({ instance, onPlay, onEdit, onDelete }: InstanceCardProps) {
@@ -428,21 +428,22 @@ export function Modal({ open, onClose, title, children, width }: ModalProps) {
 // ── Toggle ────────────────────────────────────────────────────────────────
 interface ToggleProps {
   enabled: boolean;
+  onChange?: (value: boolean) => void;
 }
 
-export function Toggle({ enabled }: ToggleProps) {
-  const [on, setOn] = useState(enabled);
+export function Toggle({ enabled, onChange }: ToggleProps) {
   return (
     <button
-      onClick={() => setOn((v) => !v)}
+      onClick={() => onChange?.(!enabled)}
+      aria-pressed={enabled}
       style={{
         width: 36,
         height: 20,
         borderRadius: 100,
-        background: on ? 'var(--gradient-primary)' : 'var(--surface-2)',
-        border: `1px solid ${on ? 'transparent' : 'var(--border)'}`,
+        background: enabled ? 'var(--gradient-primary)' : 'var(--surface-2)',
+        border: `1px solid ${enabled ? 'transparent' : 'var(--border)'}`,
         position: 'relative',
-        cursor: 'pointer',
+        cursor: onChange ? 'pointer' : 'default',
         flexShrink: 0,
         transition: 'background 0.2s',
       }}
@@ -451,11 +452,11 @@ export function Toggle({ enabled }: ToggleProps) {
         style={{
           position: 'absolute',
           top: 2,
-          left: on ? 'calc(100% - 17px)' : 2,
+          left: enabled ? 'calc(100% - 17px)' : 2,
           width: 14,
           height: 14,
           borderRadius: '50%',
-          background: on ? '#fff' : 'var(--text-muted)',
+          background: enabled ? '#fff' : 'var(--text-muted)',
           transition: 'left 0.2s var(--ease-out)',
           boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
         }}

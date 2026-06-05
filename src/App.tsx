@@ -15,6 +15,12 @@ import { getSession, logout as tauriLogout, type MinecraftProfile } from './hook
 import { setApiKey } from './hooks/useModriftApi';
 
 // ── Color helpers ─────────────────────────────────────────────────────────────
+
+/** Only accept 3 or 6-digit hex colors — rejects any injection attempt. */
+function isSafeHex(v: string): boolean {
+  return /^#[0-9a-fA-F]{6}$/.test(v) || /^#[0-9a-fA-F]{3}$/.test(v);
+}
+
 function dimify(hex: string): string {
   const r = parseInt(hex.slice(1, 3), 16),
     g = parseInt(hex.slice(3, 5), 16),
@@ -34,7 +40,15 @@ function MainApp({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [instances, setInstances] = useState<Instance[]>(() => {
     try {
       const s = localStorage.getItem('lc_instances');
-      return s ? JSON.parse(s) : [];
+      if (!s) return [];
+      const parsed: unknown[] = JSON.parse(s);
+      // Migration: drop any instances that look like old demo data
+      // (they have non-zero mods count but no user-created flag)
+      return parsed.filter(
+        (i): i is Instance =>
+          typeof i === 'object' && i !== null &&
+          'id' in i && 'name' in i && 'version' in i && 'grad' in i
+      );
     } catch {
       return [];
     }
@@ -64,7 +78,7 @@ function MainApp({ user, onLogout }: { user: User; onLogout: () => void }) {
 
   return (
     <>
-      {t.accentColor !== '#7C3AED' && (
+      {t.accentColor !== '#7C3AED' && isSafeHex(t.accentColor) && (
         <style
           dangerouslySetInnerHTML={{
             __html: `:root{--accent:${t.accentColor};--accent-dim:${dimify(t.accentColor)};--glow-accent:0 0 24px ${t.accentColor}66;}`,
@@ -149,7 +163,7 @@ export default function App() {
   }, []);
 
   function handleLogin(profile: MinecraftProfile) {
-    if (profile.launcher_api_key) setApiKey(profile.launcher_api_key);
+    setApiKey(profile.launcher_api_key);
     const u: User = { name: profile.username, type: 'microsoft' };
     setUser(u);
     try {
@@ -159,6 +173,7 @@ export default function App() {
   }
 
   function handleGuest() {
+    setApiKey(null); // ensure no stale auth key from a previous login session
     const u: User = { name: 'Guest', type: 'guest' };
     setUser(u);
     try {
