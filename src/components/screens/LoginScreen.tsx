@@ -52,8 +52,8 @@ function AuthBtn({ icon, label, primary, onClick }: AuthBtnProps) {
 function AnimatedShowcase() {
   const [progress, setProgress] = useState(34);
   const [logLines, setLogLines] = useState([
-    { id: 1, text: 'Loaded Rift loader v1.4.2', ok: true },
-    { id: 2, text: 'Resolved 47 mod dependencies', ok: true },
+    { id: 1, text: 'Rift loader initialised', ok: true },
+    { id: 2, text: 'Resolved mod dependencies', ok: true },
     { id: 3, text: 'No conflicts detected', ok: true },
   ]);
 
@@ -70,9 +70,9 @@ function AnimatedShowcase() {
   // Cycle log lines
   const pool = [
     { text: 'Checking for updates…', ok: false },
-    { text: 'Downloading Create v0.5.1f', ok: false },
+    { text: 'Downloading mod assets', ok: false },
     { text: 'Verifying file integrity', ok: false },
-    { text: 'Installing Create v0.5.1f', ok: false },
+    { text: 'Installing mod files', ok: false },
     { text: 'No conflicts detected', ok: true },
     { text: 'Resolving dependencies', ok: false },
     { text: 'All mods loaded', ok: true },
@@ -251,16 +251,16 @@ function AnimatedShowcase() {
               </div>
               {[
                 {
-                  name: 'Survival Overhaul',
+                  name: 'My Instance',
                   v: '1.21.1',
-                  mods: 47,
+                  mods: 0,
                   grad: 'linear-gradient(135deg, #1a0a3a, #2d1b69)',
                   running: false,
                 },
                 {
-                  name: 'Tech Mods Pack',
+                  name: 'New Instance',
                   v: '1.20.4',
-                  mods: 82,
+                  mods: 0,
                   grad: 'linear-gradient(135deg, #0a1a2a, #1a3050)',
                   running: true,
                 },
@@ -350,7 +350,7 @@ function AnimatedShowcase() {
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
                   <span style={{ fontSize: 9, color: 'var(--text-secondary)', fontWeight: 600 }}>
-                    Installing Create v0.5.1f
+                    Installing mod files…
                   </span>
                   <span
                     style={{

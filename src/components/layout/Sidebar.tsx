@@ -121,7 +121,7 @@ export function Sidebar({ section, onNavigate, user, compact }: SidebarProps) {
               {user.name}
             </div>
             <div style={{ fontSize: 10.5, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-              Rift v1.4.2
+              Rift Launcher
             </div>
           </div>
         </div>

@@ -241,7 +241,7 @@ export function SettingsView({ user, onLogout }: SettingsViewProps) {
                     marginTop: 1,
                   }}
                 >
-                  /usr/lib/jvm/java-21-openjdk
+                  Auto-detected
                 </div>
               </div>
               <button
@@ -275,8 +275,7 @@ export function SettingsView({ user, onLogout }: SettingsViewProps) {
         <SettingsSection title="About" last>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {[
-              ['Launcher', 'v0.1.0'],
-              ['Rift loader', 'v1.4.2'],
+              ['Launcher', __APP_VERSION__],
               ['Platform', navigator.platform || 'Unknown'],
             ].map(([k, v]) => (
               <div

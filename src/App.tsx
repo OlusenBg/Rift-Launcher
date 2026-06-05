@@ -12,6 +12,7 @@ import { SettingsView } from './components/views/SettingsView';
 import { TweaksPanel, TweakSection, TweakToggle, TweakColor, useTweaks } from './tweaks/TweaksPanel';
 import type { User, Instance, ToastState } from './types';
 import { getSession, logout as tauriLogout, type MinecraftProfile } from './hooks/useAuth';
+import { setApiKey } from './hooks/useModriftApi';
 
 // ── Color helpers ─────────────────────────────────────────────────────────────
 function dimify(hex: string): string {
@@ -20,14 +21,6 @@ function dimify(hex: string): string {
     b = parseInt(hex.slice(5, 7), 16);
   return `rgba(${r},${g},${b},0.15)`;
 }
-
-// ── Default instances data ────────────────────────────────────────────────────
-const DEFAULT_INSTANCES: Instance[] = [
-  { id: 1, name: 'Survival Overhaul',      version: '1.21.1', mods: 47, lastPlayed: '2 hours ago',  grad: 'linear-gradient(145deg, #1a0a3a 0%, #2d1b69 100%)', running: false },
-  { id: 2, name: 'Tech Mods Pack',          version: '1.20.4', mods: 82, lastPlayed: 'Yesterday',     grad: 'linear-gradient(145deg, #0a1520 0%, #1a3050 100%)', running: true  },
-  { id: 3, name: "Create: Steam 'n' Rails", version: '1.20.1', mods: 35, lastPlayed: '3 days ago',   grad: 'linear-gradient(145deg, #251408 0%, #3a2214 100%)', running: false },
-  { id: 4, name: 'Magic & Mystery',         version: '1.19.4', mods: 61, lastPlayed: 'Last week',     grad: 'linear-gradient(145deg, #0e1028 0%, #221048 100%)', running: false },
-];
 
 const TWEAK_DEFAULTS = {
   sidebarCompact: false,
@@ -41,9 +34,9 @@ function MainApp({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [instances, setInstances] = useState<Instance[]>(() => {
     try {
       const s = localStorage.getItem('lc_instances');
-      return s ? JSON.parse(s) : DEFAULT_INSTANCES;
+      return s ? JSON.parse(s) : [];
     } catch {
-      return DEFAULT_INSTANCES;
+      return [];
     }
   });
   const [toast, setToast] = useState<ToastState>({ msg: '', type: 'ok', vis: false });
@@ -136,6 +129,7 @@ export default function App() {
       try {
         const session = await getSession();
         if (session) {
+          setApiKey(session.launcher_api_key);
           const u: User = { name: session.minecraft_username, type: 'microsoft' };
           setUser(u);
           setScreen('app');
@@ -155,6 +149,7 @@ export default function App() {
   }, []);
 
   function handleLogin(profile: MinecraftProfile) {
+    if (profile.launcher_api_key) setApiKey(profile.launcher_api_key);
     const u: User = { name: profile.username, type: 'microsoft' };
     setUser(u);
     try {
@@ -173,6 +168,7 @@ export default function App() {
   }
 
   async function handleLogout() {
+    setApiKey(null);
     setUser(null);
     try {
       await tauriLogout();

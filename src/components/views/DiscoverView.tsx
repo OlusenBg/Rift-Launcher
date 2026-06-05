@@ -1,23 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { SearchBar, ModCard } from './shared';
-import type { Instance, User } from '../../types';
-
-const DISCOVER_MODS = [
-  { id: 1,  name: 'Create',                 author: 'Simibubi',     downloads: '12.4M', version: '0.5.1f',      tag: 'Technology', color: 'linear-gradient(135deg,#251408,#3a2214)' },
-  { id: 2,  name: 'Twilight Forest',        author: 'Benimatic',    downloads: '8.9M',  version: '4.3.2145',    tag: 'Adventure',  color: 'linear-gradient(135deg,#0a1508,#1a3012)' },
-  { id: 3,  name: 'Botania',                author: 'Vazkii',       downloads: '6.2M',  version: '1.21-446',    tag: 'Magic',      color: 'linear-gradient(135deg,#1a0826,#320f48)' },
-  { id: 4,  name: 'Applied Energistics 2',  author: 'AlgorithmX2',  downloads: '5.8M',  version: '15.2.0',      tag: 'Technology', color: 'linear-gradient(135deg,#081520,#1a2a40)' },
-  { id: 5,  name: "Biomes O' Plenty",       author: 'Glitchfiend',  downloads: '9.1M',  version: '21.0.0.8',    tag: 'World Gen',  color: 'linear-gradient(135deg,#0a1508,#183020)' },
-  { id: 6,  name: 'Patchouli',              author: 'Vazkii',       downloads: '4.3M',  version: '1.21-87',     tag: 'Library',    color: 'linear-gradient(135deg,#181408,#2a2412)' },
-  { id: 7,  name: 'Immersive Engineering',  author: 'BluSunrize',   downloads: '7.1M',  version: '10.1.0',      tag: 'Technology', color: 'linear-gradient(135deg,#180a0a,#301510)' },
-  { id: 8,  name: 'Mekanism',               author: 'bradyaidanc',  downloads: '5.4M',  version: '10.4.6',      tag: 'Technology', color: 'linear-gradient(135deg,#081520,#102840)' },
-  { id: 9,  name: 'Origins',                author: 'Apace100',     downloads: '4.8M',  version: '1.11.0',      tag: 'Adventure',  color: 'linear-gradient(135deg,#14081a,#26103a)' },
-  { id: 10, name: "Farmer's Delight",       author: 'vectorwing',   downloads: '6.7M',  version: '1.4.3',       tag: 'Utility',    color: 'linear-gradient(135deg,#1a1008,#302018)' },
-  { id: 11, name: 'Just Enough Items',      author: 'mezz',         downloads: '14.1M', version: '19.21.0.243', tag: 'Utility',    color: 'linear-gradient(135deg,#08101a,#182030)' },
-  { id: 12, name: 'Waystones',              author: 'BlayTheNinth', downloads: '8.2M',  version: '14.1.3',      tag: 'Utility',    color: 'linear-gradient(135deg,#0e0818,#1c1030)' },
-];
-
-const MOD_TAGS = ['All', 'Technology', 'Magic', 'Adventure', 'World Gen', 'Utility', 'Library'];
+import { fetchMods, fetchCategories } from '../../hooks/useModriftApi';
+import type { Mod, Instance, User } from '../../types';
 
 const viewLabelStyle: React.CSSProperties = {
   fontSize: 10.5,
@@ -38,18 +22,43 @@ interface DiscoverViewProps {
 export function DiscoverView({ showToast }: DiscoverViewProps) {
   const [q, setQ] = useState('');
   const [tag, setTag] = useState('All');
-  const [added, setAdded] = useState<Record<number, boolean>>({});
+  const [tags, setTags] = useState<string[]>(['All']);
+  const [mods, setMods] = useState<Mod[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [added, setAdded] = useState<Record<string, boolean>>({});
 
-  const filtered = DISCOVER_MODS.filter(
-    (m) =>
-      (tag === 'All' || m.tag === tag) &&
-      (!q ||
-        m.name.toLowerCase().includes(q.toLowerCase()) ||
-        m.author.toLowerCase().includes(q.toLowerCase()))
-  );
+  useEffect(() => {
+    fetchCategories().then((cats) => {
+      if (cats.length > 0) setTags(['All', ...cats]);
+    });
+  }, []);
 
-  function handleAdd(mod: (typeof DISCOVER_MODS)[0]) {
-    setAdded((prev) => ({ ...prev, [mod.id]: true }));
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const results = await fetchMods({
+        search: q || undefined,
+        category: tag !== 'All' ? tag : undefined,
+        limit: 48,
+      });
+      setMods(results as unknown as Mod[]);
+    } catch (e) {
+      setError('Could not reach modrift.dev — check your connection.');
+    } finally {
+      setLoading(false);
+    }
+  }, [q, tag]);
+
+  useEffect(() => {
+    const t = setTimeout(load, q ? 350 : 0);
+    return () => clearTimeout(t);
+  }, [load, q]);
+
+  function handleAdd(mod: Mod) {
+    const key = (mod as unknown as { slug?: string }).slug ?? String(mod.id);
+    setAdded((prev) => ({ ...prev, [key]: true }));
     showToast(`${mod.name} added`, 'ok');
   }
 
@@ -80,7 +89,7 @@ export function DiscoverView({ showToast }: DiscoverViewProps) {
           <SearchBar value={q} onChange={setQ} placeholder="Search mods, authors…" />
         </div>
         <div style={{ display: 'flex', gap: 6, marginTop: 12, flexWrap: 'wrap' }}>
-          {MOD_TAGS.map((t) => (
+          {tags.map((t) => (
             <button
               key={t}
               onClick={() => setTag(t)}
@@ -101,13 +110,35 @@ export function DiscoverView({ showToast }: DiscoverViewProps) {
           ))}
         </div>
       </div>
+
       {/* Grid */}
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px' }}>
-        {filtered.length === 0 ? (
-          <div
-            style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '60px 0', fontSize: 14 }}
-          >
-            No mods match &ldquo;{q}&rdquo;
+        {loading ? (
+          <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '60px 0', fontSize: 14 }}>
+            Loading mods…
+          </div>
+        ) : error ? (
+          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <div style={{ color: 'var(--danger)', fontSize: 14, marginBottom: 12 }}>{error}</div>
+            <button
+              onClick={load}
+              style={{
+                padding: '8px 20px',
+                background: 'var(--surface-2)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-btn)',
+                color: 'var(--text-secondary)',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Retry
+            </button>
+          </div>
+        ) : mods.length === 0 ? (
+          <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '60px 0', fontSize: 14 }}>
+            {q ? `No mods match "${q}"` : 'No mods available yet.'}
           </div>
         ) : (
           <div
@@ -117,9 +148,12 @@ export function DiscoverView({ showToast }: DiscoverViewProps) {
               gap: 14,
             }}
           >
-            {filtered.map((mod) => (
-              <ModCard key={mod.id} mod={mod} onAdd={handleAdd} added={!!added[mod.id]} />
-            ))}
+            {mods.map((mod) => {
+              const key = (mod as unknown as { slug?: string }).slug ?? String(mod.id);
+              return (
+                <ModCard key={key} mod={mod} onAdd={handleAdd} added={!!added[key]} />
+              );
+            })}
           </div>
         )}
       </div>

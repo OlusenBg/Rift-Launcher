@@ -209,7 +209,7 @@ export function InstancesView({ instances, onSetInstances, showToast }: Instance
                   display: 'inline-block',
                 }}
               />
-              Rift v1.4.2{' '}
+              Rift Loader{' '}
               <span
                 style={{
                   marginLeft: 'auto',
