@@ -85,3 +85,68 @@ export async function fetchCategories(): Promise<string[]> {
     return [];
   }
 }
+
+// ── Modpacks ──────────────────────────────────────────────────────────────────
+
+export interface ApiModpack {
+  id: string;
+  slug: string;
+  name: string;
+  short_description: string;
+  thumbnail_url: string | null;
+  version: string;
+  tags: string[];
+  category: string;
+  mod_count: number;
+  download_count: number;
+  featured: boolean;
+  creators: Array<{ name: string; role: string }>;
+}
+
+export function modpackToCard(p: ApiModpack) {
+  const hash = [...p.id].reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  return {
+    id: p.id,
+    slug: p.slug,
+    name: p.name,
+    desc: p.short_description,
+    author: p.creators[0]?.name ?? 'Unknown',
+    mods: p.mod_count,
+    version: p.version,
+    tag: p.category || p.tags[0] || 'Modpack',
+    color: GRAD_PALETTE[hash % GRAD_PALETTE.length],
+    downloads: fmtDownloads(p.download_count),
+    featured: p.featured,
+  };
+}
+
+export type ModpackCard = ReturnType<typeof modpackToCard>;
+
+export async function fetchModpacks(params?: {
+  search?: string;
+  category?: string;
+  featured?: boolean;
+  limit?: number;
+}): Promise<ModpackCard[]> {
+  const url = new URL(`${API_BASE}/modpacks`);
+  if (params?.search) url.searchParams.set('search', params.search);
+  if (params?.category && params.category !== 'All') url.searchParams.set('category', params.category);
+  if (params?.featured) url.searchParams.set('featured', 'true');
+  if (params?.limit) url.searchParams.set('limit', String(params.limit));
+
+  const res = await fetch(url.toString(), { headers: headers() });
+  if (!res.ok) throw new Error(`API ${res.status}`);
+  const data = await res.json();
+  const list: ApiModpack[] = Array.isArray(data) ? data : (data.modpacks ?? []);
+  return list.map(modpackToCard);
+}
+
+export async function fetchModpackCategories(): Promise<string[]> {
+  try {
+    const res = await fetch(`${API_BASE}/modpacks/categories`, { headers: headers() });
+    if (!res.ok) return [];
+    return res.json();
+  } catch {
+    return [];
+  }
+}
