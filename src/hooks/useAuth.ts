@@ -12,6 +12,11 @@ export interface MinecraftProfile {
   launcher_api_key: string;
 }
 
+export interface UpdateInfo {
+  version: string;
+  release_url: string;
+}
+
 export async function startAuth(): Promise<MinecraftProfile> {
   return invoke('start_auth');
 }
@@ -26,4 +31,8 @@ export async function logout(): Promise<void> {
 
 export async function refreshMinecraftToken(): Promise<void> {
   return invoke('refresh_minecraft_token');
+}
+
+export async function checkForUpdate(): Promise<UpdateInfo | null> {
+  return invoke('check_for_update');
 }

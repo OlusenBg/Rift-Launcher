@@ -11,10 +11,10 @@ import { DiscoverView } from './components/views/DiscoverView';
 import { SettingsView } from './components/views/SettingsView';
 import { TweaksPanel, TweakSection, TweakToggle, TweakColor, useTweaks } from './tweaks/TweaksPanel';
 import type { User, Instance, ToastState } from './types';
-import { getSession, logout as tauriLogout, type MinecraftProfile } from './hooks/useAuth';
+import { getSession, logout as tauriLogout, checkForUpdate, type MinecraftProfile, type UpdateInfo } from './hooks/useAuth';
 import { setApiKey } from './hooks/useModriftApi';
 
-// ── Color helpers ─────────────────────────────────────────────────────────────
+// ── Color helpers ────────────────────────────────────────────────────────────────────────────────
 
 /** Only accept 3 or 6-digit hex colors — rejects any injection attempt. */
 function isSafeHex(v: string): boolean {
@@ -33,7 +33,60 @@ const TWEAK_DEFAULTS = {
   accentColor: '#7C3AED',
 };
 
-// ── Main App ──────────────────────────────────────────────────────────────────
+// ── Update banner ──────────────────────────────────────────────────────────────────
+
+function UpdateBanner({ version, releaseUrl, onDismiss }: { version: string; releaseUrl: string; onDismiss: () => void }) {
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 12,
+      padding: '8px 16px',
+      background: 'linear-gradient(90deg, rgba(124,58,237,0.25) 0%, rgba(124,58,237,0.1) 100%)',
+      borderBottom: '1px solid rgba(124,58,237,0.35)',
+      fontSize: '0.8rem',
+      color: 'var(--text-primary)',
+      flexShrink: 0,
+    }}>
+      <span style={{ color: '#A78BFA', fontWeight: 600 }}>Update available — v{version}</span>
+      <a
+        href={releaseUrl}
+        target="_blank"
+        rel="noreferrer"
+        style={{
+          padding: '3px 10px',
+          borderRadius: 4,
+          background: 'var(--accent)',
+          color: '#fff',
+          textDecoration: 'none',
+          fontWeight: 600,
+          fontSize: '0.75rem',
+        }}
+      >
+        Download
+      </a>
+      <button
+        onClick={onDismiss}
+        aria-label="Dismiss update notification"
+        style={{
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          color: 'var(--text-muted)',
+          padding: '2px 4px',
+          fontSize: '1rem',
+          lineHeight: 1,
+        }}
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
+// ── Main App ───────────────────────────────────────────────────────────────────────────────
+
 function MainApp({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const [section, setSection] = useState('instances');
@@ -42,8 +95,6 @@ function MainApp({ user, onLogout }: { user: User; onLogout: () => void }) {
       const s = localStorage.getItem('lc_instances');
       if (!s) return [];
       const parsed: unknown[] = JSON.parse(s);
-      // Migration: drop any instances that look like old demo data
-      // (they have non-zero mods count but no user-created flag)
       return parsed.filter(
         (i): i is Instance =>
           typeof i === 'object' && i !== null &&
@@ -55,14 +106,12 @@ function MainApp({ user, onLogout }: { user: User; onLogout: () => void }) {
   });
   const [toast, setToast] = useState<ToastState>({ msg: '', type: 'ok', vis: false });
 
-  // Persist instances
   useEffect(() => {
     try {
       localStorage.setItem('lc_instances', JSON.stringify(instances));
     } catch {}
   }, [instances]);
 
-  // Toast helper
   function showToast(msg: string, type = 'ok') {
     setToast({ msg, type, vis: true });
     setTimeout(() => setToast((p) => ({ ...p, vis: false })), 2500);
@@ -132,12 +181,14 @@ function MainApp({ user, onLogout }: { user: User; onLogout: () => void }) {
   );
 }
 
-// ── Root App — screen router ───────────────────────────────────────────────────
+// ── Root App — screen router ───────────────────────────────────────────────────────────────
+
 export default function App() {
   const [screen, setScreen] = useState<'splash' | 'login' | 'app'>('splash');
   const [user, setUser] = useState<User | null>(null);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [updateDismissed, setUpdateDismissed] = useState(false);
 
-  // Persist session — check Tauri session first, fall back to localStorage
   useEffect(() => {
     (async () => {
       try {
@@ -162,6 +213,14 @@ export default function App() {
     })();
   }, []);
 
+  // Check for update once we reach the app screen
+  useEffect(() => {
+    if (screen !== 'app') return;
+    checkForUpdate()
+      .then(info => { if (info) setUpdateInfo(info); })
+      .catch(() => {});
+  }, [screen]);
+
   function handleLogin(profile: MinecraftProfile) {
     setApiKey(profile.launcher_api_key);
     const u: User = { name: profile.username, type: 'microsoft' };
@@ -173,7 +232,7 @@ export default function App() {
   }
 
   function handleGuest() {
-    setApiKey(null); // ensure no stale auth key from a previous login session
+    setApiKey(null);
     const u: User = { name: 'Guest', type: 'guest' };
     setUser(u);
     try {
@@ -207,8 +266,17 @@ export default function App() {
       )}
 
       {screen === 'app' && user && (
-        <div style={{ height: '100%' }}>
-          <MainApp user={user} onLogout={handleLogout} />
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          {updateInfo && !updateDismissed && (
+            <UpdateBanner
+              version={updateInfo.version}
+              releaseUrl={updateInfo.release_url}
+              onDismiss={() => setUpdateDismissed(true)}
+            />
+          )}
+          <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
+            <MainApp user={user} onLogout={handleLogout} />
+          </div>
         </div>
       )}
     </div>
