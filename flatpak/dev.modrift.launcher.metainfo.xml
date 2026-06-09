@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>dev.modrift.launcher</id>
+  <name>Rift Launcher</name>
+  <summary>Install, manage and launch Minecraft mods</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>proprietary</project_license>
+
+  <description>
+    <p>
+      Rift Launcher is the official desktop client for Modrift — install mods,
+      manage multiple Minecraft instances, and launch the game all from one place.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">dev.modrift.launcher.desktop</launchable>
+
+  <url type="homepage">https://modrift.dev</url>
+
+  <provides>
+    <binary>rift-launcher</binary>
+  </provides>
+
+  <releases>
+    <release version="0.1.0" date="2025-01-01">
+      <description><p>Initial release.</p></description>
+    </release>
+  </releases>
+
+  <content_rating type="oars-1.1"/>
+</component>
