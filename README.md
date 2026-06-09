@@ -104,7 +104,9 @@ If you fork this repository, please credit the original author:
 
 > Based on [Modrift Launcher](https://github.com/OlusenBg/Rift-Launcher) by [Olusen](https://github.com/OlusenBg).
 
-Pull requests are welcome. Open an issue first for large changes.
+Open an issue for large a desired change.
+
+If you wish to contact me please add me on discord
 
 ## License
 
