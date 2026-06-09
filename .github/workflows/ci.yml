@@ -154,3 +154,59 @@ jobs:
         with:
           name: macos
           path: src-tauri/target/release/bundle/dmg/*.dmg
+
+  build-flatpak:
+    name: Build Flatpak
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder python3-pip python3-aiohttp python3-toml
+
+      - name: Generate npm vendor sources
+        run: |
+          pip3 install flatpak-node-generator --break-system-packages
+          mkdir -p flatpak
+          flatpak-node-generator npm package-lock.json -o flatpak/generated-sources.json
+
+      - name: Generate cargo vendor sources
+        run: |
+          curl -sSL https://raw.githubusercontent.com/flatpak/flatpak-builder-tools/master/cargo/flatpak-cargo-generator.py \
+            -o /tmp/flatpak-cargo-generator.py
+          python3 /tmp/flatpak-cargo-generator.py src-tauri/Cargo.lock -o flatpak/cargo-sources.json
+
+      - name: Add Flathub and install runtimes
+        run: |
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user -y --noninteractive \
+            flathub \
+            org.gnome.Platform//47 \
+            org.gnome.Sdk//47 \
+            org.freedesktop.Sdk.Extension.rust-stable//24.08 \
+            org.freedesktop.Sdk.Extension.node22//24.08
+
+      - name: Build Flatpak
+        run: |
+          flatpak-builder \
+            --user \
+            --install \
+            --force-clean \
+            --state-dir=.flatpak-builder \
+            build-dir \
+            dev.modrift.launcher.yml
+
+      - name: Export .flatpak bundle
+        run: |
+          flatpak build-bundle \
+            ~/.local/share/flatpak/repo \
+            rift-launcher.flatpak \
+            dev.modrift.launcher
+
+      - name: Upload Flatpak artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flatpak
+          path: rift-launcher.flatpak
