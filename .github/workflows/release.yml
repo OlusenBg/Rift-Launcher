@@ -12,6 +12,8 @@ jobs:
   prepare:
     name: Bump version
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -24,14 +26,12 @@ jobs:
         run: |
           VERSION="${{ github.event.inputs.version }}"
           SEMVER="${VERSION#v}"
-          # Update package.json
           node -e "
             const fs = require('fs');
             const pkg = JSON.parse(fs.readFileSync('package.json','utf8'));
             pkg.version = '$SEMVER';
             fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
           "
-          # Update tauri.conf.json
           node -e "
             const fs = require('fs');
             const cfg = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8'));
@@ -206,10 +206,77 @@ jobs:
           name: release-macos
           path: src-tauri/target/release/bundle/dmg/*.dmg
 
+  build-flatpak:
+    name: Release Flatpak
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Install Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Build frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install Flatpak tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder python3-pip python3-aiohttp
+
+      - name: Generate cargo vendor sources
+        run: |
+          pip3 install tomlkit aiohttp --break-system-packages
+          curl -sSL https://raw.githubusercontent.com/flatpak/flatpak-builder-tools/master/cargo/flatpak-cargo-generator.py \
+            -o /tmp/flatpak-cargo-generator.py
+          mkdir -p flatpak
+          python3 /tmp/flatpak-cargo-generator.py src-tauri/Cargo.lock -o flatpak/cargo-sources.json
+
+      - name: Add Flathub and install runtimes
+        run: |
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user -y --noninteractive \
+            flathub \
+            org.gnome.Platform//47 \
+            org.gnome.Sdk//47 \
+            org.freedesktop.Sdk.Extension.rust-stable//24.08
+
+      - name: Build Flatpak
+        run: |
+          flatpak-builder \
+            --user \
+            --install \
+            --force-clean \
+            --state-dir=.flatpak-builder \
+            build-dir \
+            dev.modrift.launcher.yml
+
+      - name: Export .flatpak bundle
+        run: |
+          flatpak build-bundle \
+            ~/.local/share/flatpak/repo \
+            rift-launcher.flatpak \
+            dev.modrift.launcher
+
+      - name: Upload Flatpak artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-flatpak
+          path: rift-launcher.flatpak
+
   publish:
     name: Create GitHub Release
-    needs: [build-linux, build-windows-msi, build-windows-portable, build-macos]
+    needs: [build-linux, build-windows-msi, build-windows-portable, build-macos, build-flatpak]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
