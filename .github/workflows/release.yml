@@ -100,6 +100,16 @@ jobs:
         with:
           ref: ${{ github.ref }}
 
+      - name: Strip pre-release suffix for MSI
+        shell: bash
+        run: |
+          node -e "
+            const fs = require('fs');
+            const cfg = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8'));
+            cfg.version = cfg.version.replace(/-[^\\s]*$/, '');
+            fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(cfg, null, 2) + '\n');
+          "
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
