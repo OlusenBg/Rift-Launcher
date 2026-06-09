@@ -26,10 +26,10 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
 
-      - name: Install Node.js 20
+      - name: Install Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install frontend dependencies
@@ -63,10 +63,10 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
 
-      - name: Install Node.js 20
+      - name: Install Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install frontend dependencies
@@ -99,10 +99,10 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
 
-      - name: Install Node.js 20
+      - name: Install Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install frontend dependencies
@@ -135,10 +135,10 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
 
-      - name: Install Node.js 20
+      - name: Install Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install frontend dependencies
@@ -154,32 +154,3 @@ jobs:
         with:
           name: macos
           path: src-tauri/target/release/bundle/dmg/*.dmg
-
-  flatpak-placeholder:
-    name: Flatpak (placeholder)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Install frontend dependencies
-        run: npm ci
-
-      - name: Install flatpak deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y flatpak flatpak-builder
-          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-
-      - name: Build frontend
-        run: npm run build
-
-      - name: Flatpak build note
-        run: |
-          echo "Flatpak build placeholder — a proper manifest at dev.modrift.launcher.yml needs to be added."
-          echo "See dev.modrift.launcher.yml in the repo root for the stub manifest."
