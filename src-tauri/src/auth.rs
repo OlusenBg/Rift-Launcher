@@ -5,8 +5,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use tauri_plugin_shell::ShellExt;
 
-// ── Session file path ─────────────────────────────────────────────────────────
+// ── Session file path ───────────────────────────────────────────────────────────────
 
 fn session_path() -> PathBuf {
     dirs::data_dir()
@@ -15,7 +16,7 @@ fn session_path() -> PathBuf {
         .join("session.json")
 }
 
-// ── Persisted session ─────────────────────────────────────────────────────────
+// ── Persisted session ────────────────────────────────────────────────────────────
 
 #[derive(Serialize, Deserialize, Clone)]
 struct Session {
@@ -42,7 +43,6 @@ fn save_session(session: &Session) -> Result<(), String> {
     }
     let data = serde_json::to_string(session).map_err(|_| "Failed to serialize session".to_string())?;
 
-    // Write with restricted permissions (owner read/write only)
     #[cfg(unix)]
     {
         use std::os::unix::fs::OpenOptionsExt;
@@ -70,9 +70,8 @@ fn now_secs() -> u64 {
         .as_secs()
 }
 
-// ── Public return types ───────────────────────────────────────────────────────
+// ── Public return types ──────────────────────────────────────────────────────────────
 
-/// Only non-sensitive fields are returned to the frontend.
 #[derive(Serialize, Deserialize)]
 pub struct MinecraftProfile {
     pub uuid: String,
@@ -87,7 +86,7 @@ pub struct SessionInfo {
     pub launcher_api_key: String,
 }
 
-// ── Exchange response from modrift.dev ────────────────────────────────────────
+// ── Exchange response from modrift.dev ────────────────────────────────────────────
 
 #[derive(Deserialize)]
 struct ExchangeResponse {
@@ -97,7 +96,7 @@ struct ExchangeResponse {
     ms_token_expires_at: u64,
 }
 
-// ── Minecraft auth chain structs ──────────────────────────────────────────────
+// ── Minecraft auth chain structs ───────────────────────────────────────────────
 
 #[derive(Deserialize)]
 struct XboxAuthResponse {
@@ -129,7 +128,7 @@ struct MinecraftProfileResponse {
     name: String,
 }
 
-// ── Refresh response from modrift.dev ─────────────────────────────────────────
+// ── Refresh response from modrift.dev ─────────────────────────────────────────────
 
 #[derive(Deserialize)]
 struct RefreshResponse {
@@ -138,12 +137,11 @@ struct RefreshResponse {
     ms_token_expires_at: u64,
 }
 
-// ── Minecraft auth chain ──────────────────────────────────────────────────────
+// ── Minecraft auth chain ──────────────────────────────────────────────────────────
 
 async fn do_minecraft_auth(ms_access_token: &str) -> Result<(String, u64, String, String), String> {
     let client = reqwest::Client::new();
 
-    // Step A: Xbox Live
     let xbl_body = serde_json::json!({
         "Properties": {
             "AuthMethod": "RPS",
@@ -159,28 +157,16 @@ async fn do_minecraft_auth(ms_access_token: &str) -> Result<(String, u64, String
         .header("Content-Type", "application/json")
         .header("Accept", "application/json")
         .json(&xbl_body)
-        .send()
-        .await
-        .map_err(|_| "Xbox Live authentication failed".to_string())?
-        .json()
-        .await
-        .map_err(|_| "Xbox Live authentication failed".to_string())?;
+        .send().await.map_err(|_| "Xbox Live authentication failed".to_string())?
+        .json().await.map_err(|_| "Xbox Live authentication failed".to_string())?;
 
     let xbl_token = xbl_resp.token;
-    let user_hash = xbl_resp
-        .display_claims
-        .xui
-        .into_iter()
-        .next()
+    let user_hash = xbl_resp.display_claims.xui.into_iter().next()
         .map(|x| x.uhs)
         .ok_or("Xbox Live authentication failed")?;
 
-    // Step B: XSTS
     let xsts_body = serde_json::json!({
-        "Properties": {
-            "SandboxId": "RETAIL",
-            "UserTokens": [xbl_token]
-        },
+        "Properties": { "SandboxId": "RETAIL", "UserTokens": [xbl_token] },
         "RelyingParty": "rp://api.minecraftservices.com/",
         "TokenType": "JWT"
     });
@@ -189,16 +175,11 @@ async fn do_minecraft_auth(ms_access_token: &str) -> Result<(String, u64, String
         .post("https://xsts.auth.xboxlive.com/xsts/authorize")
         .header("Content-Type", "application/json")
         .json(&xsts_body)
-        .send()
-        .await
-        .map_err(|_| "Xbox Live authentication failed".to_string())?
-        .json()
-        .await
-        .map_err(|_| "Xbox Live authentication failed".to_string())?;
+        .send().await.map_err(|_| "Xbox Live authentication failed".to_string())?
+        .json().await.map_err(|_| "Xbox Live authentication failed".to_string())?;
 
     let xsts_token = xsts_resp.token;
 
-    // Step C: Minecraft auth
     let mc_body = serde_json::json!({
         "identityToken": format!("XBL3.0 x={};{}", user_hash, xsts_token)
     });
@@ -207,36 +188,22 @@ async fn do_minecraft_auth(ms_access_token: &str) -> Result<(String, u64, String
         .post("https://api.minecraftservices.com/authentication/login_with_xbox")
         .header("Content-Type", "application/json")
         .json(&mc_body)
-        .send()
-        .await
-        .map_err(|_| "Minecraft authentication failed".to_string())?
-        .json()
-        .await
-        .map_err(|_| "Minecraft authentication failed".to_string())?;
+        .send().await.map_err(|_| "Minecraft authentication failed".to_string())?
+        .json().await.map_err(|_| "Minecraft authentication failed".to_string())?;
 
     let minecraft_token = mc_resp.access_token;
     let minecraft_token_expires_at = now_secs() + mc_resp.expires_in;
 
-    // Step D: Minecraft profile
     let profile_resp: MinecraftProfileResponse = client
         .get("https://api.minecraftservices.com/minecraft/profile")
         .header("Authorization", format!("Bearer {}", minecraft_token))
-        .send()
-        .await
-        .map_err(|_| "Failed to fetch Minecraft profile".to_string())?
-        .json()
-        .await
-        .map_err(|_| "Failed to fetch Minecraft profile".to_string())?;
+        .send().await.map_err(|_| "Failed to fetch Minecraft profile".to_string())?
+        .json().await.map_err(|_| "Failed to fetch Minecraft profile".to_string())?;
 
-    Ok((
-        minecraft_token,
-        minecraft_token_expires_at,
-        profile_resp.id,
-        profile_resp.name,
-    ))
+    Ok((minecraft_token, minecraft_token_expires_at, profile_resp.id, profile_resp.name))
 }
 
-// ── URL query param helpers ───────────────────────────────────────────────────
+// ── URL query param helpers ───────────────────────────────────────────────────────────
 
 fn url_decode(s: &str) -> String {
     let mut result = String::new();
@@ -269,38 +236,36 @@ fn parse_query_param(query: &str, key: &str) -> Option<String> {
     None
 }
 
-// State is valid for 10 minutes
 const STATE_TTL_SECS: u64 = 600;
 
-// ── Tauri commands ────────────────────────────────────────────────────────────
+// ── Tauri commands ────────────────────────────────────────────────────────────────────────────
 
 #[tauri::command]
-pub async fn start_auth() -> Result<MinecraftProfile, String> {
+pub async fn start_auth(app: tauri::AppHandle) -> Result<MinecraftProfile, String> {
     // 1. Bind to a free localhost port
-    let listener = TcpListener::bind("127.0.0.1:0").map_err(|_| "Failed to start auth listener".to_string())?;
-    let port = listener.local_addr().map_err(|_| "Failed to start auth listener".to_string())?.port();
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .map_err(|_| "Failed to start auth listener".to_string())?;
+    let port = listener.local_addr()
+        .map_err(|_| "Failed to start auth listener".to_string())?.port();
 
-    // 2. Generate CSRF state and record when it was issued
+    // 2. Generate CSRF state
     let state: String = {
         let mut rng = rand::thread_rng();
-        (0..32)
-            .map(|_| format!("{:02x}", rng.gen::<u8>()))
-            .collect()
+        (0..32).map(|_| format!("{:02x}", rng.gen::<u8>())).collect()
     };
     let state_issued_at = now_secs();
 
-    // 3. Build URL and open browser
-    let auth_url = format!(
-        "https://modrift.dev/auth/launcher?port={}&state={}",
-        port, state
-    );
-    open::that(&auth_url).map_err(|_| "Failed to open browser".to_string())?;
+    // 3. Open the auth URL in the system browser via Tauri's shell plugin
+    let auth_url = format!("https://modrift.dev/auth/launcher?port={}&state={}", port, state);
+    app.shell().open(&auth_url, None)
+        .map_err(|_| "Failed to open browser".to_string())?;
 
-    // 4. Accept one connection from the callback (120 s timeout)
-    listener.set_nonblocking(false).map_err(|_| "Listener setup failed".to_string())?;
-    let (mut stream, _) = listener.accept().map_err(|_| "No callback received — did you complete login in the browser?".to_string())?;
-    stream
-        .set_read_timeout(Some(std::time::Duration::from_secs(120)))
+    // 4. Accept one HTTP connection from the callback (120 s timeout)
+    listener.set_nonblocking(false)
+        .map_err(|_| "Listener setup failed".to_string())?;
+    let (mut stream, _) = listener.accept()
+        .map_err(|_| "No callback received — did you complete login in the browser?".to_string())?;
+    stream.set_read_timeout(Some(std::time::Duration::from_secs(120)))
         .map_err(|_| "Listener setup failed".to_string())?;
 
     // 5. Read until end of HTTP headers
@@ -311,10 +276,7 @@ pub async fn start_auth() -> Result<MinecraftProfile, String> {
             Ok(0) => break,
             Ok(_) => {
                 buf.push(tmp[0]);
-                if buf.ends_with(b"\r\n\r\n") {
-                    break;
-                }
-                // Guard against oversized requests
+                if buf.ends_with(b"\r\n\r\n") { break; }
                 if buf.len() > 8192 {
                     let _ = stream.write_all(b"HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
                     return Err("Auth callback request too large".to_string());
@@ -324,19 +286,16 @@ pub async fn start_auth() -> Result<MinecraftProfile, String> {
         }
     }
 
-    // 6. Parse first line for GET /callback?code=...&state=...
+    // 6. Parse code and state from the callback query string
     let request_str = String::from_utf8_lossy(&buf);
     let first_line = request_str.lines().next().unwrap_or("");
-    let path_and_query = first_line
-        .split_whitespace()
-        .nth(1)
-        .ok_or("Invalid auth callback")?;
+    let path_and_query = first_line.split_whitespace().nth(1).ok_or("Invalid auth callback")?;
     let query = path_and_query.splitn(2, '?').nth(1).unwrap_or("");
 
-    let code = parse_query_param(query, "code").ok_or("Invalid auth callback")?;
+    let code           = parse_query_param(query, "code").ok_or("Invalid auth callback")?;
     let returned_state = parse_query_param(query, "state").ok_or("Invalid auth callback")?;
 
-    // 7. Validate CSRF state BEFORE sending any response
+    // 7. Validate CSRF state before sending any response
     if returned_state != state {
         let _ = stream.write_all(
             b"HTTP/1.1 400 Bad Request\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n\
@@ -345,7 +304,7 @@ pub async fn start_auth() -> Result<MinecraftProfile, String> {
         return Err("Login failed. Please try again.".to_string());
     }
 
-    // 8. Check state has not expired
+    // 8. Reject expired state
     if now_secs().saturating_sub(state_issued_at) > STATE_TTL_SECS {
         let _ = stream.write_all(
             b"HTTP/1.1 400 Bad Request\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n\
@@ -354,7 +313,7 @@ pub async fn start_auth() -> Result<MinecraftProfile, String> {
         return Err("Login timed out. Please try again.".to_string());
     }
 
-    // 9. Send success page only after validation passes
+    // 9. Success page
     let _ = stream.write_all(
         b"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n\
           <html><body><h1>Login successful! You can close this tab.</h1></body></html>",
@@ -368,18 +327,14 @@ pub async fn start_auth() -> Result<MinecraftProfile, String> {
         .post("https://modrift.dev/api/auth/launcher/exchange")
         .header("Content-Type", "application/json")
         .json(&serde_json::json!({ "code": code }))
-        .send()
-        .await
-        .map_err(|_| "Login failed. Please try again.".to_string())?
-        .json()
-        .await
-        .map_err(|_| "Login failed. Please try again.".to_string())?;
+        .send().await.map_err(|_| "Login failed. Please try again.".to_string())?
+        .json().await.map_err(|_| "Login failed. Please try again.".to_string())?;
 
     // 11. Full Minecraft auth chain
     let (minecraft_token, minecraft_token_expires_at, uuid, username) =
         do_minecraft_auth(&exchange.ms_access_token).await?;
 
-    // 12. Save session
+    // 12. Persist session
     let session = Session {
         launcher_api_key: exchange.launcher_api_key.clone(),
         ms_access_token: exchange.ms_access_token,
@@ -392,12 +347,7 @@ pub async fn start_auth() -> Result<MinecraftProfile, String> {
     };
     save_session(&session)?;
 
-    // Return only non-sensitive identity fields + launcher key (needed for API calls)
-    Ok(MinecraftProfile {
-        uuid,
-        username,
-        launcher_api_key: exchange.launcher_api_key,
-    })
+    Ok(MinecraftProfile { uuid, username, launcher_api_key: exchange.launcher_api_key })
 }
 
 #[tauri::command]
@@ -421,23 +371,18 @@ pub async fn logout() -> Result<(), String> {
 #[tauri::command]
 pub async fn refresh_minecraft_token() -> Result<(), String> {
     let mut session = load_session().ok_or("Not logged in".to_string())?;
-    let now = now_secs();
 
-    if now >= session.ms_token_expires_at {
+    if now_secs() >= session.ms_token_expires_at {
         let client = reqwest::Client::new();
         let refresh: RefreshResponse = client
             .post("https://modrift.dev/api/auth/microsoft/refresh")
             .header("Content-Type", "application/json")
             .header("Authorization", format!("Bearer {}", session.launcher_api_key))
             .json(&serde_json::json!({ "refresh_token": session.ms_refresh_token }))
-            .send()
-            .await
-            .map_err(|_| "Token refresh failed. Please log in again.".to_string())?
-            .json()
-            .await
-            .map_err(|_| "Token refresh failed. Please log in again.".to_string())?;
+            .send().await.map_err(|_| "Token refresh failed. Please log in again.".to_string())?
+            .json().await.map_err(|_| "Token refresh failed. Please log in again.".to_string())?;
 
-        session.ms_access_token = refresh.ms_access_token;
+        session.ms_access_token  = refresh.ms_access_token;
         session.ms_refresh_token = refresh.ms_refresh_token;
         session.ms_token_expires_at = refresh.ms_token_expires_at;
     }
