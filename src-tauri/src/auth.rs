@@ -291,7 +291,7 @@ pub async fn start_auth() -> Result<MinecraftProfile, String> {
 
     // 3. Build URL and open browser
     let auth_url = format!(
-        "https://modrift.dev/auth/launcher?redirect_uri=http%3A%2F%2Flocalhost%3A{}%2Fcallback&state={}",
+        "https://modrift.dev/auth/launcher?port={}&state={}",
         port, state
     );
     open::that(&auth_url).map_err(|_| "Failed to open browser".to_string())?;
