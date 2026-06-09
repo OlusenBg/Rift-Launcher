@@ -1,7 +1,7 @@
 {
   "name": "rift-launcher",
   "private": true,
-  "version": "0.1.2-Alpha",
+  "version": "0.2.0-Alpha",
   "type": "module",
   "scripts": {
     "dev": "vite",
