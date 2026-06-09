@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Rift Launcher
+Comment=Install, manage and launch Minecraft mods
+Exec=rift-launcher
+Icon=dev.modrift.launcher
+Terminal=false
+Type=Application
+Categories=Game;
+StartupNotify=true
