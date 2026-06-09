@@ -161,22 +161,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Build frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install Flatpak tools
         run: |
           sudo apt-get update
           sudo apt-get install -y flatpak flatpak-builder python3-pip python3-aiohttp
-
-      - name: Generate npm vendor sources
-        run: |
-          pip3 install flatpak-node-generator --break-system-packages
-          mkdir -p flatpak
-          flatpak-node-generator npm package-lock.json -o flatpak/generated-sources.json
 
       - name: Generate cargo vendor sources
         run: |
           pip3 install tomlkit aiohttp --break-system-packages
           curl -sSL https://raw.githubusercontent.com/flatpak/flatpak-builder-tools/master/cargo/flatpak-cargo-generator.py \
             -o /tmp/flatpak-cargo-generator.py
+          mkdir -p flatpak
           python3 /tmp/flatpak-cargo-generator.py src-tauri/Cargo.lock -o flatpak/cargo-sources.json
 
       - name: Add Flathub and install runtimes
@@ -186,8 +192,7 @@ jobs:
             flathub \
             org.gnome.Platform//47 \
             org.gnome.Sdk//47 \
-            org.freedesktop.Sdk.Extension.rust-stable//24.08 \
-            org.freedesktop.Sdk.Extension.node22//24.08
+            org.freedesktop.Sdk.Extension.rust-stable//24.08
 
       - name: Build Flatpak
         run: |
