@@ -38,12 +38,18 @@ jobs:
             cfg.version = '$SEMVER';
             fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(cfg, null, 2) + '\n');
           "
+          node -e "
+            const fs = require('fs');
+            const cargo = fs.readFileSync('src-tauri/Cargo.toml','utf8');
+            const updated = cargo.replace(/version = \"[^\"]*\"/, 'version = \"' + '$SEMVER' + '\"');
+            fs.writeFileSync('src-tauri/Cargo.toml', updated);
+          "
 
       - name: Commit version bump
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add package.json src-tauri/tauri.conf.json
+          git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml
           git commit -m "chore: bump version to ${{ github.event.inputs.version }}"
           git push
 
@@ -100,14 +106,29 @@ jobs:
         with:
           ref: ${{ github.ref }}
 
-      - name: Strip pre-release suffix for MSI
+      - name: Convert pre-release to numeric format for MSI
         shell: bash
         run: |
           node -e "
             const fs = require('fs');
             const cfg = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8'));
-            cfg.version = cfg.version.replace(/-[^\\s]*$/, '');
+            // Convert pre-release identifier to numeric format for MSI compatibility
+            // e.g., 0.2.1-Alpha becomes 0.2.1.1
+            if (cfg.version.includes('-')) {
+              cfg.version = cfg.version.replace(/-[^\\s]*$/, '.1');
+            }
             fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(cfg, null, 2) + '\n');
+          "
+          node -e "
+            const fs = require('fs');
+            let cargo = fs.readFileSync('src-tauri/Cargo.toml','utf8');
+            // Extract current version and apply same conversion
+            const versionMatch = cargo.match(/version = \"([^\"]*)\"/);
+            if (versionMatch && versionMatch[1].includes('-')) {
+              const converted = versionMatch[1].replace(/-[^\\s]*$/, '.1');
+              cargo = cargo.replace(/version = \"[^\"]*\"/, 'version = \"' + converted + '\"');
+              fs.writeFileSync('src-tauri/Cargo.toml', cargo);
+            }
           "
 
       - name: Install Rust
