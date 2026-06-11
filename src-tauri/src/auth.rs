@@ -255,10 +255,13 @@ pub async fn start_auth(app: tauri::AppHandle) -> Result<MinecraftProfile, Strin
     };
     let state_issued_at = now_secs();
 
-    // 3. Open the auth URL in the system browser via Tauri's shell plugin
+    // 3. Open the auth URL in the system browser
     let auth_url = format!("https://modrift.dev/auth/launcher?port={}&state={}", port, state);
-    app.shell().open(&auth_url, None)
-        .map_err(|_| "Failed to open browser".to_string())?;
+    // Try Tauri shell plugin first, fall back to open crate
+    let open_result = app.shell().open(&auth_url, None);
+    if open_result.is_err() {
+        open::that(&auth_url).map_err(|_| "Failed to open browser".to_string())?;
+    }
 
     // 4. Accept one HTTP connection from the callback (120 s timeout)
     listener.set_nonblocking(false)
