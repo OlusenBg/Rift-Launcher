@@ -63,6 +63,22 @@ fn save_session(session: &Session) -> Result<(), String> {
     Ok(())
 }
 
+// ── Credentials for the Minecraft launcher module ─────────────────────────────────
+
+pub(crate) struct McCredentials {
+    pub token: String,
+    pub uuid: String,
+    pub username: String,
+}
+
+pub(crate) fn minecraft_credentials() -> Option<McCredentials> {
+    load_session().map(|s| McCredentials {
+        token: s.minecraft_token,
+        uuid: s.minecraft_uuid,
+        username: s.minecraft_username,
+    })
+}
+
 fn now_secs() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -255,12 +271,14 @@ pub async fn start_auth(app: tauri::AppHandle) -> Result<MinecraftProfile, Strin
     };
     let state_issued_at = now_secs();
 
-    // 3. Open the auth URL in the system browser
+    // 3. Open the auth URL in the system browser.
+    // open::that uses ShellExecuteW directly on Windows — the shell plugin goes
+    // through `cmd start`, which mangles URLs containing `&` and triggers
+    // "Application not found". Keep the plugin only as a fallback.
     let auth_url = format!("https://modrift.dev/auth/launcher?port={}&state={}", port, state);
-    // Try Tauri shell plugin first, fall back to open crate
-    let open_result = app.shell().open(&auth_url, None);
-    if open_result.is_err() {
-        open::that(&auth_url).map_err(|_| "Failed to open browser".to_string())?;
+    if open::that(&auth_url).is_err() {
+        app.shell().open(&auth_url, None)
+            .map_err(|_| "Failed to open browser".to_string())?;
     }
 
     // 4. Accept one HTTP connection from the callback (120 s timeout)

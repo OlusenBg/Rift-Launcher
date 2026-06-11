@@ -5,12 +5,14 @@ import type { Instance, Mod } from '../../types';
 // ── Instance Card ─────────────────────────────────────────────────────────
 interface InstanceCardProps {
   instance: Instance;
+  /** Launch progress label (e.g. "Assets 1042/3210 — 62%"); null when idle. */
+  progress?: string | null;
   onPlay: (instance: Instance) => void;
   onEdit?: (instance: Instance) => void;
   onDelete?: (id: string) => void;
 }
 
-export function InstanceCard({ instance, onPlay, onEdit, onDelete }: InstanceCardProps) {
+export function InstanceCard({ instance, progress = null, onPlay, onEdit, onDelete }: InstanceCardProps) {
   const [hov, setHov] = useState(false);
   return (
     <div
@@ -147,24 +149,34 @@ export function InstanceCard({ instance, onPlay, onEdit, onDelete }: InstanceCar
         </div>
         <button
           onClick={() => onPlay(instance)}
+          disabled={!!progress}
           style={{
             width: '100%',
             padding: '9px 0',
-            background: instance.running ? 'rgba(34,197,94,0.12)' : 'var(--gradient-primary)',
-            border: instance.running ? '1px solid rgba(34,197,94,0.35)' : 'none',
+            background: progress
+              ? 'rgba(124,58,237,0.12)'
+              : instance.running
+                ? 'rgba(248,113,113,0.1)'
+                : 'var(--gradient-primary)',
+            border: progress
+              ? '1px solid rgba(124,58,237,0.35)'
+              : instance.running
+                ? '1px solid rgba(248,113,113,0.35)'
+                : 'none',
             borderRadius: 'var(--radius-btn)',
-            color: instance.running ? 'var(--ok)' : '#fff',
+            color: progress ? 'var(--accent-light)' : instance.running ? 'var(--danger)' : '#fff',
             fontSize: 13,
             fontWeight: 700,
-            cursor: 'pointer',
+            cursor: progress ? 'default' : 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: 7,
-            boxShadow: instance.running ? 'none' : 'var(--glow-accent)',
+            boxShadow: instance.running || progress ? 'none' : 'var(--glow-accent)',
             transition: 'opacity 0.15s, transform 0.15s',
           }}
           onMouseEnter={(e) => {
+            if (progress) return;
             e.currentTarget.style.opacity = '0.88';
             e.currentTarget.style.transform = 'translateY(-1px)';
           }}
@@ -173,8 +185,42 @@ export function InstanceCard({ instance, onPlay, onEdit, onDelete }: InstanceCar
             e.currentTarget.style.transform = 'translateY(0)';
           }}
         >
-          <Icon.play s={11} />
-          {instance.running ? 'Open console' : 'Play'}
+          {progress ? (
+            <>
+              <span
+                style={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: '50%',
+                  border: '2px solid rgba(167,139,250,0.3)',
+                  borderTopColor: 'var(--accent-light)',
+                  animation: 'lcSpin 0.7s linear infinite',
+                  flexShrink: 0,
+                }}
+              />
+              <span
+                style={{
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  maxWidth: '85%',
+                  fontSize: 11.5,
+                }}
+              >
+                {progress}
+              </span>
+            </>
+          ) : instance.running ? (
+            <>
+              <LIcon.square s={11} />
+              Stop
+            </>
+          ) : (
+            <>
+              <Icon.play s={11} />
+              Play
+            </>
+          )}
         </button>
       </div>
     </div>

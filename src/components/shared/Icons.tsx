@@ -111,6 +111,11 @@ export const Icon = {
 
 // Extra launcher icons
 export const LIcon = {
+  square: (p?: IconProps) => (
+    <svg width={p?.s || 14} height={p?.s || 14} viewBox="0 0 14 14" fill="currentColor">
+      <rect x="2.5" y="2.5" width="9" height="9" rx="1.5" />
+    </svg>
+  ),
   settings: (p?: IconProps) => (
     <svg width={p?.s || 20} height={p?.s || 20} viewBox="0 0 24 24" fill="none">
       <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.4" />
