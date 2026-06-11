@@ -1,6 +1,6 @@
 [package]
 name = "rift-launcher"
-version = "0.2.1"
+version = "1.0.0"
 description = "Rift Launcher — Minecraft mod manager"
 authors = ["Modrift"]
 license = ""
