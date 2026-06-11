@@ -12,6 +12,62 @@ use crate::auth;
 
 const VERSION_MANIFEST: &str = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
 const RESOURCES_BASE: &str = "https://resources.download.minecraft.net";
+const RIFT_LOADER_META: &str = "https://modrift.dev/api/loader";
+
+// ── Rift Loader profile ─────────────────────────────────────────────────────────────
+
+struct LoaderProfile {
+    loader_version: String,
+    main_class: String,
+    /// (maven path, url, size)
+    libraries: Vec<(String, String, Option<u64>)>,
+    jvm_args: Vec<String>,
+    game_args: Vec<String>,
+}
+
+/// Asks modrift.dev for the Rift Loader profile matching this Minecraft
+/// version. Returns Ok(None) when no loader build is available (or the meta
+/// service is unreachable) so the caller can fall back to vanilla.
+async fn fetch_loader_profile(client: &reqwest::Client, mc_version: &str) -> Option<LoaderProfile> {
+    let url = format!("{RIFT_LOADER_META}?mc_version={mc_version}");
+    let data: Value = client
+        .get(&url)
+        .timeout(std::time::Duration::from_secs(10))
+        .send().await.ok()?
+        .error_for_status().ok()?
+        .json().await.ok()?;
+
+    if !data["available"].as_bool().unwrap_or(false) {
+        return None;
+    }
+
+    let libraries = data["libraries"]
+        .as_array()?
+        .iter()
+        .filter_map(|lib| {
+            Some((
+                lib["path"].as_str()?.to_string(),
+                lib["url"].as_str()?.to_string(),
+                lib["size"].as_u64().filter(|s| *s > 0),
+            ))
+        })
+        .collect::<Vec<_>>();
+
+    let string_list = |key: &str| -> Vec<String> {
+        data[key]
+            .as_array()
+            .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+            .unwrap_or_default()
+    };
+
+    Some(LoaderProfile {
+        loader_version: data["loader_version"].as_str()?.to_string(),
+        main_class: data["main_class"].as_str()?.to_string(),
+        libraries,
+        jvm_args: string_list("jvm_args"),
+        game_args: string_list("game_args"),
+    })
+}
 
 // ── Paths ─────────────────────────────────────────────────────────────────────────
 
@@ -308,10 +364,29 @@ pub async fn launch_instance(app: tauri::AppHandle, instance_id: String, version
         download(&client, url, &client_jar, size).await?;
     }
 
-    // 3. Libraries + natives
+    // 3. Rift Loader profile (falls back to vanilla when no build matches)
+    emit_progress(&app, &instance_id, "Checking Rift Loader", 9);
+    let loader = fetch_loader_profile(&client, &version).await;
+    let mut classpath: Vec<PathBuf> = Vec::new();
+
+    if let Some(profile) = &loader {
+        let total = profile.libraries.len().max(1);
+        for (idx, (path, url, size)) in profile.libraries.iter().enumerate() {
+            emit_progress(
+                &app,
+                &instance_id,
+                &format!("Rift Loader {}/{}", idx + 1, total),
+                9,
+            );
+            let dest = root.join("libraries").join(path);
+            download(&client, url, &dest, *size).await?;
+            classpath.push(dest);
+        }
+    }
+
+    // 4. Vanilla libraries + natives
     let natives_dir = root.join("natives").join(&version);
     std::fs::create_dir_all(&natives_dir).map_err(|e| e.to_string())?;
-    let mut classpath: Vec<PathBuf> = Vec::new();
     let empty = Vec::new();
     let libraries = version_data["libraries"].as_array().unwrap_or(&empty);
     let total_libs = libraries.len().max(1);
@@ -348,7 +423,7 @@ pub async fn launch_instance(app: tauri::AppHandle, instance_id: String, version
     }
     classpath.push(client_jar);
 
-    // 4. Assets
+    // 5. Assets
     let assets_index_id = version_data["assets"].as_str().unwrap_or("legacy").to_string();
     let asset_index_path = root.join("assets").join("indexes").join(format!("{assets_index_id}.json"));
     if let (Some(url), size) = (
@@ -423,8 +498,15 @@ pub async fn launch_instance(app: tauri::AppHandle, instance_id: String, version
         }
     }
 
-    // 5. Build the command line
-    emit_progress(&app, &instance_id, "Starting game", 95);
+    // 6. Build the command line
+    let stage = match &loader {
+        Some(p) => format!("Starting Rift Loader {}", p.loader_version),
+        None => "Starting game (vanilla — Rift Loader not yet available for this version)".to_string(),
+    };
+    emit_progress(&app, &instance_id, &stage, 95);
+
+    // The loader scans the instance mods folder
+    std::fs::create_dir_all(game_dir.join("mods")).map_err(|e| e.to_string())?;
     let sep = if cfg!(windows) { ";" } else { ":" };
     let classpath_str = classpath
         .iter()
@@ -454,9 +536,17 @@ pub async fn launch_instance(app: tauri::AppHandle, instance_id: String, version
     vars.insert("resolution_width", "854".to_string());
     vars.insert("resolution_height", "480".to_string());
 
-    let main_class = version_data["mainClass"].as_str().ok_or("missing mainClass")?.to_string();
+    // Rift Loader overrides the entry point and may inject extra arguments
+    let main_class = match &loader {
+        Some(profile) => profile.main_class.clone(),
+        None => version_data["mainClass"].as_str().ok_or("missing mainClass")?.to_string(),
+    };
     let mut jvm_args: Vec<String> = vec!["-Xmx2G".to_string()];
     let mut game_args: Vec<String> = Vec::new();
+    if let Some(profile) = &loader {
+        jvm_args.extend(profile.jvm_args.iter().map(|a| substitute(a, &vars)));
+        game_args.extend(profile.game_args.iter().map(|a| substitute(a, &vars)));
+    }
 
     if let Some(arguments) = version_data.get("arguments") {
         for element in arguments["jvm"].as_array().unwrap_or(&empty) {
@@ -477,7 +567,7 @@ pub async fn launch_instance(app: tauri::AppHandle, instance_id: String, version
         }
     }
 
-    // 6. Spawn
+    // 7. Spawn
     let mut command = Command::new(&java);
     command
         .args(&jvm_args)
@@ -501,7 +591,7 @@ pub async fn launch_instance(app: tauri::AppHandle, instance_id: String, version
     emit_progress(&app, &instance_id, "Running", 100);
     emit_state(&app, &instance_id, true);
 
-    // 7. Watch for exit on a background thread
+    // 8. Watch for exit on a background thread
     let watch_app = app.clone();
     let watch_id = instance_id.clone();
     std::thread::spawn(move || loop {
